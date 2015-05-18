@@ -7,15 +7,15 @@ using System.Threading.Tasks;
 
 namespace MySimpleQueryParser
 {
-    public class RegexParser : IParser
+    public class RegexParser : Parser
     {
         const string QueryPattern = @"^\s+(?<t>\w+)\s+(?<f>.+)\s+from\s+(?<e>\w+)\s*(?:where\s+(?<c>.+))*";
 
-        public const string FAILED_PARSE_INVALID_NULL_EMPTY_INPUT = "Invalid null/empty/whitespace input";
-        public const string FAILED_PARSE_INVALID_INPUT_QUERY = "Invalid or incomplete input query parameter";
-        public const string FAILED_PARSE_INVALID_QUERY_TYPE = "Invalid query type was found";
+        public RegexParser(IDictionary<string, EntityDefinition> entities) : base(entities)
+        {
+        }
 
-        public ParseResult Parse(string inputQuery)
+        public override ParseResult Parse(string inputQuery)
         {
             if (string.IsNullOrWhiteSpace(inputQuery)) return new ParseResult(FAILED_PARSE_INVALID_NULL_EMPTY_INPUT);
 
@@ -47,6 +47,16 @@ namespace MySimpleQueryParser
                 {
                     query.Type = queryType;
                 }
+
+                if (!_entities.ContainsKey(parsedEntityName))
+                {
+                    return new ParseResult(FAILED_PARSE_INVALID_ENTITY_NAME + ":" + parsedEntityName);
+                }
+                else
+                {
+                    query.EntityName = _entities[parsedEntityName].Name;
+                }
+                
 
                 return new ParseResult(query);
             }
