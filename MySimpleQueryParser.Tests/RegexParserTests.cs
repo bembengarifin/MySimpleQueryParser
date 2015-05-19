@@ -2,6 +2,7 @@
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
+using System.Diagnostics;
 //using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
 
 namespace MySimpleQueryParser.Tests
@@ -14,32 +15,22 @@ namespace MySimpleQueryParser.Tests
         [TestInitialize]
         public void SetUp()
         {
-            var entities = new Dictionary<string, EntityDefinition>(StringComparer.OrdinalIgnoreCase)
+            var entities = new List<EntityDefinition>
             {
-                { "ety", new EntityDefinition
+                new EntityDefinition("ety", new List<Field> () 
                     { 
-                        Name = "ety", 
-                        Fields = new List<Field> () 
-                        { 
-                            new Field ("abc", FieldType.GeneralType),
-                            new Field ("def", FieldType.DateType),
-                            new Field ("ghi", FieldType.NumberType),
-                            new Field ("jkl", FieldType.GeneralType),
-                            new Field ("mno", FieldType.NumberType),
-                        } 
-                    }
-                },
-                { "xyz", new EntityDefinition
+                        new Field ("abc", FieldType.GeneralType),
+                        new Field ("def", FieldType.DateType),
+                        new Field ("ghi", FieldType.NumberType),
+                        new Field ("jkl", FieldType.GeneralType),
+                        new Field ("mno", FieldType.NumberType),
+                    }),
+                new EntityDefinition("xyz", new List<Field> () 
                     { 
-                        Name = "xyz", 
-                        Fields = new List<Field> () 
-                        { 
-                            new Field ("uvw", FieldType.GeneralType),
-                            new Field ("rst", FieldType.DateType),
-                            new Field ("opq", FieldType.NumberType),
-                        } 
-                    }
-                },
+                        new Field ("uvw", FieldType.GeneralType),
+                        new Field ("rst", FieldType.DateType),
+                        new Field ("opq", FieldType.NumberType),
+                    }),
             };
 
             _parser = new RegexParser(entities);
@@ -57,7 +48,7 @@ namespace MySimpleQueryParser.Tests
         [ExpectedException(typeof(ArgumentException))]
         public void Empty_EntityDefinitions_Will_Raise_Exception()
         {
-            _parser = new RegexParser(new Dictionary<string, EntityDefinition>());
+            _parser = new RegexParser(new List<EntityDefinition>());
         }
 
         [TestMethod]
@@ -115,7 +106,7 @@ namespace MySimpleQueryParser.Tests
         [TestMethod]
         public void Select_Input_Will_Return_Select_Query_Type()
         {
-            var result = _parser.Parse(" select abc from XYZ ");
+            var result = _parser.Parse(" select abc from ety ");
             Assert.IsTrue(result.IsSuccess);
             Assert.IsTrue(result.Query.Type == QueryType.Select);
         }
@@ -123,7 +114,7 @@ namespace MySimpleQueryParser.Tests
         [TestMethod]
         public void Pivot_Input_Will_Return_Pivot_Query_Type()
         {
-            var result = _parser.Parse(" pivot  abc from XYZ  ");
+            var result = _parser.Parse(" pivot  abc from ety ");
             Assert.IsTrue(result.IsSuccess);
             Assert.IsTrue(result.Query.Type == QueryType.Pivot);
         }
@@ -131,7 +122,7 @@ namespace MySimpleQueryParser.Tests
         [TestMethod]
         public void Chart_Input_Will_Return_Chart_Query_Type()
         {
-            var result = _parser.Parse(" chart  abc from XYZ  ");
+            var result = _parser.Parse(" chart  abc from ety  ");
             Assert.IsTrue(result.IsSuccess);
             Assert.IsTrue(result.Query.Type == QueryType.Chart);
         }
@@ -142,7 +133,7 @@ namespace MySimpleQueryParser.Tests
         [TestMethod]
         public void Invalid_EntityName_Will_Return_Failed_Parse_Result()
         {
-            var result = _parser.Parse(" select abc from XYZ ");
+            var result = _parser.Parse(" select abc from qwe ");
             Assert.IsFalse(result.IsSuccess);
             Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_ENTITY_NAME));
         }
@@ -151,8 +142,49 @@ namespace MySimpleQueryParser.Tests
         public void Valid_EntityName_Will_Return_Success_Parse_Result()
         {
             var result = _parser.Parse(" select rst from xYz ");
-            Assert.IsFalse(result.IsSuccess);
+            Assert.IsTrue(result.IsSuccess);
             Assert.IsTrue(result.Query.EntityName == "xyz");
+        }
+
+        #endregion
+
+        #region Field Tests
+
+        [TestMethod]
+        public void Invalid_Field_Will_Return_Failed_Parse_Result()
+        {
+            var result = _parser.Parse(" select abc from XyZ ");
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_FIELD_NAME));
+        }
+
+        [TestMethod]
+        public void Mixed_Valid_And_Invalid_Fields_Will_Return_Failed_Parse_Result()
+        {
+            var result = _parser.Parse(" select rsT, abc, uvw from XyZ ");
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_FIELD_NAME));
+        }
+
+        [TestMethod]
+        public void Valid_FieldName_Will_Return_Success_Parse_Result()
+        {
+            var result = _parser.Parse(" select rst from xYz ");
+            Assert.IsTrue(result.IsSuccess);
+            CollectionAssert.AreEqual(new List<Field>() { new Field("rSt", FieldType.DateType) }, result.Query.Fields.ToList());
+        }
+
+        [TestMethod]
+        public void Valid_FieldNames_Will_Return_Success_Parse_Result()
+        {
+            var result = _parser.Parse(" select uvw, rst,opq  from xYz ");
+            Assert.IsTrue(result.IsSuccess);
+            CollectionAssert.AreEqual(new List<Field>() { 
+                                                            new Field("uVw", FieldType.GeneralType) ,
+                                                            new Field("rSt", FieldType.DateType) ,
+                                                            new Field("OPQ", FieldType.NumberType) ,
+                                                        }
+                , result.Query.Fields.ToList());
         }
 
         #endregion

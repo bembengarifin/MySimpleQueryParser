@@ -19,14 +19,15 @@ namespace MySimpleQueryParser
         public const string FAILED_PARSE_INVALID_INPUT_QUERY = "Invalid or incomplete input query parameter";
         public const string FAILED_PARSE_INVALID_QUERY_TYPE = "Invalid query type was found";
         public const string FAILED_PARSE_INVALID_ENTITY_NAME = "Invalid entity name was found";
+        public const string FAILED_PARSE_INVALID_FIELD_NAME = "Invalid field name was found";
 
         protected IDictionary<string, EntityDefinition> _entities;
-        public Parser(IDictionary<string, EntityDefinition> entities)
+        public Parser(IList<EntityDefinition> entities)
         {
             if (entities == null) throw new ArgumentNullException();
             if (entities.Count == 0) throw new ArgumentException();
 
-            _entities = entities;
+            _entities = entities.ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
         }
 
         public IDictionary<string, EntityDefinition> Entities { get { return _entities; } }
@@ -35,8 +36,30 @@ namespace MySimpleQueryParser
 
     public class EntityDefinition
     {
-        public string Name { get; set; }
-        public IList<Field> Fields { get; set; }
+        public EntityDefinition(string name, IList<Field> fields)
+        {
+            Name = name;
+            Fields = fields;
+
+            _fieldDictionary = fields.ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
+        }
+        public string Name { get; private set; }
+        public IList<Field> Fields { get; private set; }
+
+        private IDictionary<string, Field> _fieldDictionary;
+
+        public Field this[string fieldName]
+        {
+            get
+            {
+                return _fieldDictionary.ContainsKey(fieldName) ? _fieldDictionary[fieldName] : null;
+            }
+        }
+
+        public override string ToString()
+        {
+            return string.Format("{0},{1}", Name, Fields);
+        }
     }
 
     public class ParseResult
@@ -61,6 +84,11 @@ namespace MySimpleQueryParser
         public bool IsSuccess { get; private set; }
         public Query Query { get; private set; }
         public String Message { get; private set; }
+
+        public override string ToString()
+        {
+            return string.Format("IsSuccess:{0},Message:{1},Query:{2}", IsSuccess, Message, Query);
+        }
     }
 
     public class Query
@@ -69,6 +97,24 @@ namespace MySimpleQueryParser
         public IList<Field> Fields { get; set; }
         public string EntityName { get; set; }
         public IList<QueryFilter> Filters { get; set; }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder(200);
+
+            sb.AppendFormat("{0} {1} FROM {2}"
+                , Type
+                , string.Join(",", Fields.Select(x => x.ToString()).ToArray())
+                , EntityName
+                ); 
+            
+            if (Filters != null && Filters.Count > 0)
+            {
+                sb.AppendFormat(" WHERE {1}", string.Join(",", Filters.Select(x => x.ToString()).ToArray()));
+            }
+
+            return sb.ToString();
+        }
     }
 
     public enum QueryType
@@ -78,15 +124,34 @@ namespace MySimpleQueryParser
         Chart
     }
 
-    public class Field
+    public class Field : IEquatable<Field>
     {
         public Field(string name, FieldType fieldType)
         {
             Name = name;
             FieldType = fieldType;
         }
-        public string Name { get; set; }
-        public FieldType FieldType { get; set; }
+        public string Name { get; private set; }
+        public FieldType FieldType { get; private set; }
+
+        public override string ToString()
+        {
+            return string.Format("{0} ({1})", Name, FieldType);
+        }
+
+        public bool Equals(Field other)
+        {
+            if (other == null)
+                return false;
+
+            return string.Compare(this.Name, other.Name, true) == 0
+                && this.FieldType.Equals(other.FieldType);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return this.Equals(obj as Field);
+        }
     }
 
     public class QueryFilter

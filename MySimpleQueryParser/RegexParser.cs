@@ -11,7 +11,8 @@ namespace MySimpleQueryParser
     {
         const string QueryPattern = @"^\s+(?<t>\w+)\s+(?<f>.+)\s+from\s+(?<e>\w+)\s*(?:where\s+(?<c>.+))*";
 
-        public RegexParser(IDictionary<string, EntityDefinition> entities) : base(entities)
+        public RegexParser(IList<EntityDefinition> entities)
+            : base(entities)
         {
         }
 
@@ -43,20 +44,30 @@ namespace MySimpleQueryParser
                 {
                     return new ParseResult(FAILED_PARSE_INVALID_QUERY_TYPE + ":" + parsedQueryType);
                 }
-                else
-                {
-                    query.Type = queryType;
-                }
+                query.Type = queryType;
 
                 if (!_entities.ContainsKey(parsedEntityName))
                 {
                     return new ParseResult(FAILED_PARSE_INVALID_ENTITY_NAME + ":" + parsedEntityName);
                 }
-                else
+                var entity = _entities[parsedEntityName];
+                query.EntityName = entity.Name;
+
+                query.Fields = new List<Field>();
+                var splitFields = parsedFields.Split(',');
+                var invalidFields = new List<string>();
+                foreach (var fieldName in splitFields)
                 {
-                    query.EntityName = _entities[parsedEntityName].Name;
+                    var field = entity[fieldName.Trim()];
+                    if (field == null)
+                        invalidFields.Add(fieldName);
+
+                    query.Fields.Add(field);
                 }
-                
+                if (invalidFields.Count > 0)
+                {
+                    return new ParseResult(FAILED_PARSE_INVALID_FIELD_NAME + ":" + string.Join(",", invalidFields.ToArray()));
+                }
 
                 return new ParseResult(query);
             }
