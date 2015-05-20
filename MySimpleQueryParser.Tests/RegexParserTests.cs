@@ -84,11 +84,29 @@ namespace MySimpleQueryParser.Tests
         }
 
         [TestMethod]
-        public void Incomplete_Input_Will_Return_Failed_Parse_Result()
+        public void Incomplete_Input_Only_Query_Type_Will_Return_Failed_Parse_Result()
         {
             var result = _parser.Parse(" select  ");
             Assert.IsFalse(result.IsSuccess);
             Assert.AreEqual(result.Message, Parser.FAILED_PARSE_INVALID_INPUT_QUERY);
+            Assert.IsNull(result.Query);
+        }
+
+        [TestMethod]
+        public void Incomplete_Input_Only_Query_Type_And_Fields_Will_Return_Failed_Parse_Result()
+        {
+            var result = _parser.Parse(" select abc, def ");
+            Assert.IsFalse(result.IsSuccess);
+            Assert.AreEqual(result.Message, Parser.FAILED_PARSE_INVALID_INPUT_QUERY);
+            Assert.IsNull(result.Query);
+        }
+
+        [TestMethod]
+        public void Incomplete_Input_Where_Without_Condition_Will_Return_Failed_Parse_Result()
+        {
+            var result = _parser.Parse(" select abc, def from ety where ");
+            Assert.IsFalse(result.IsSuccess);
+            Assert.AreEqual(result.Message, Parser.FAILED_PARSE_INVALID_WHERE_WITHOUT_FILTER);
             Assert.IsNull(result.Query);
         }
 
@@ -106,7 +124,7 @@ namespace MySimpleQueryParser.Tests
         [TestMethod]
         public void Select_Input_Will_Return_Select_Query_Type()
         {
-            var result = _parser.Parse(" select abc from ety ");
+            var result = _parser.Parse(" sEleCt abc from ety ");
             Assert.IsTrue(result.IsSuccess);
             Assert.IsTrue(result.Query.Type == QueryType.Select);
         }
@@ -141,12 +159,12 @@ namespace MySimpleQueryParser.Tests
         [TestMethod]
         public void Valid_EntityName_Will_Return_Success_Parse_Result()
         {
-            var result = _parser.Parse(" select rst from xYz ");
+            var result = _parser.Parse(" select rst fRoM xYz ");
             Assert.IsTrue(result.IsSuccess);
             Assert.IsTrue(result.Query.EntityName == "xyz");
         }
 
-        #endregion
+        #endregion-
 
         #region Field Tests
 

@@ -20,6 +20,7 @@ namespace MySimpleQueryParser
         public const string FAILED_PARSE_INVALID_QUERY_TYPE = "Invalid query type was found";
         public const string FAILED_PARSE_INVALID_ENTITY_NAME = "Invalid entity name was found";
         public const string FAILED_PARSE_INVALID_FIELD_NAME = "Invalid field name was found";
+        public const string FAILED_PARSE_INVALID_WHERE_WITHOUT_FILTER = "Invalid query, where is specified without any filter condition";
 
         protected IDictionary<string, EntityDefinition> _entities;
         public Parser(IList<EntityDefinition> entities)
