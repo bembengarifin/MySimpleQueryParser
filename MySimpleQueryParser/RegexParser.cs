@@ -9,7 +9,7 @@ namespace MySimpleQueryParser
 {
     public class RegexParser : Parser
     {
-        const string QueryPattern = @"^\s+(?<t>\w+)\s+(?<f>.+)\s+from\s+(?<e>\w+)\s*(?<w>where\s+(?<c>.+))*";
+        const string QueryPattern = @"^\s*(?<t>\w+)\s+(?<f>.+)\s+from\s+(?<e>\w+)\s*(?<w>where\s*(?<c>.+)*)*";
 
         public RegexParser(IList<EntityDefinition> entities)
             : base(entities)
@@ -38,7 +38,7 @@ namespace MySimpleQueryParser
                 var parsedCriteria = match.Groups["c"].Value;
                 var parsedWhere = match.Groups["w"].Value;
 
-                if (!string.IsNullOrWhiteSpace(parsedWhere) && string.IsNullOrWhiteSpace( parsedCriteria))
+                if (!string.IsNullOrWhiteSpace(parsedWhere) && string.IsNullOrWhiteSpace(parsedCriteria))
                 {
                     return new ParseResult(FAILED_PARSE_INVALID_WHERE_WITHOUT_FILTER);
                 }
