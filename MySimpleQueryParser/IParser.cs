@@ -21,6 +21,13 @@ namespace MySimpleQueryParser
         public const string FAILED_PARSE_INVALID_ENTITY_NAME = "Invalid entity name was found";
         public const string FAILED_PARSE_INVALID_FIELD_NAME = "Invalid field name was found";
         public const string FAILED_PARSE_INVALID_WHERE_WITHOUT_FILTER = "Invalid query, where is specified without any filter condition";
+        public const string FAILED_PARSE_INVALID_WHERE_INCORRECT_FORMAT = "Invalid query, where filter condition is not in correct format";
+        public const string FAILED_PARSE_INVALID_WHERE_INVALID_OPERATOR = "Invalid query, invalid filter operator was found";
+        public const string FAILED_PARSE_INVALID_WHERE_EMPTY_IN_LIST = "Invalid empty in list filter was found";
+        public const string FAILED_PARSE_INVALID_WHERE_INCORRECT_FORMAT_IN_LIST = "Invalid in list filter format was found";
+        public const string FAILED_PARSE_INVALID_WHERE_BETWEEN_FORMAT = "Invalid between filter was found, it must have 2 values in comma separated values and put in parentheses";
+        public const string FAILED_PARSE_INVALID_WHERE_INVALID_DATE_VALUE = "Invalid filter date value was found for date type filter field";
+        public const string FAILED_PARSE_INVALID_WHERE_INVALID_NUMERIC_VALUE = "Invalid filter numeric value was found for numeric type filter field";
 
         protected IDictionary<string, EntityDefinition> _entities;
         public Parser(IList<EntityDefinition> entities)
@@ -132,8 +139,20 @@ namespace MySimpleQueryParser
             Name = name;
             FieldType = fieldType;
         }
+
         public string Name { get; private set; }
         public FieldType FieldType { get; private set; }
+
+        public override int GetHashCode()
+        {
+            unchecked // Overflow is fine, just wrap
+            {
+                int hash = 17;
+                hash = hash * 23 + (string.IsNullOrEmpty(Name) ? 0 : Name.GetHashCode());
+                hash = hash * 23 + FieldType.GetHashCode();
+                return hash;
+            }
+        }
 
         public override string ToString()
         {
@@ -158,7 +177,15 @@ namespace MySimpleQueryParser
     public class QueryFilter
     {
         public Field Field { get; set; }
+        public FilterOperator Operator { get; set; }
         public IList<string> FilterValues { get; set; }
+    }
+
+    public enum FilterOperator
+    {
+        Equal,
+        InList,
+        Between,
     }
 
     public class PivotField : Field

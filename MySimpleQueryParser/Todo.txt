@@ -1,0 +1,4 @@
+﻿
+
+- where condition parsing
+- entity definition file and repository
