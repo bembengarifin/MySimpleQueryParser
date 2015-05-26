@@ -18,16 +18,16 @@ namespace MySimpleQueryParser.Tests
         {
             var entities = new List<EntityDefinition>
             {
-                new EntityDefinition("ety", new List<Field> () 
-                    { 
+                new EntityDefinition("ety", new List<Field> ()
+                    {
                         new Field ("abc", FieldType.GeneralType),
                         new Field ("def", FieldType.DateType),
                         new Field ("ghi", FieldType.NumberType),
                         new Field ("jkl", FieldType.GeneralType),
                         new Field ("mno", FieldType.NumberType),
                     }),
-                new EntityDefinition("xyz", new List<Field> () 
-                    { 
+                new EntityDefinition("xyz", new List<Field> ()
+                    {
                         new Field ("uvw", FieldType.GeneralType),
                         new Field ("rst", FieldType.DateType),
                         new Field ("opq", FieldType.NumberType),
@@ -198,7 +198,7 @@ namespace MySimpleQueryParser.Tests
         {
             var result = _parser.Parse(" select uvw, rst,opq  from xYz ");
             Assert.IsTrue(result.IsSuccess);
-            CollectionAssert.AreEqual(new List<Field>() { 
+            CollectionAssert.AreEqual(new List<Field>() {
                                                             new Field("uVw", FieldType.GeneralType) ,
                                                             new Field("rSt", FieldType.DateType) ,
                                                             new Field("OPQ", FieldType.NumberType) ,
@@ -209,7 +209,7 @@ namespace MySimpleQueryParser.Tests
         #endregion
 
         #region Where Condition Tests
-        
+
         void AssertFilter(QueryFilter filter, string name, FilterOperator filterOperator, params string[] values)
         {
             Assert.AreEqual(name, filter.Field.Name);
@@ -224,15 +224,17 @@ namespace MySimpleQueryParser.Tests
             Assert.IsTrue(result.IsSuccess);
 
             var filter = result.Query.Filters[0];
-            AssertFilter(filter, "uvw", FilterOperator.Equal, "123" );
+            AssertFilter(filter, "uvw", FilterOperator.Equal, "123");
         }
 
         [TestMethod]
-        public void More_Than_Three_Resultset_In_Condition_Should_Return_Failed_Parse_Result()
+        public void Space_In_Equal_Condition_Should_Return_Success_Parse_Result()
         {
             var result = _parser.Parse(" select uvw, rst,opq  from xYz where uvw = 123 456");
-            Assert.IsFalse(result.IsSuccess);
-            Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_WHERE_INCORRECT_FORMAT));
+            Assert.IsTrue(result.IsSuccess);
+
+            var filter = result.Query.Filters[0];
+            AssertFilter(filter, "uvw", FilterOperator.Equal, "123 456");
         }
 
         [TestMethod]
@@ -258,7 +260,7 @@ namespace MySimpleQueryParser.Tests
             Assert.IsTrue(result.IsSuccess);
 
             var filter = result.Query.Filters[0];
-            AssertFilter(filter, "uvw", FilterOperator.Equal, "123", "456");
+            AssertFilter(filter, "uvw", FilterOperator.InList, "123", "456");
         }
 
         [TestMethod]
@@ -270,13 +272,15 @@ namespace MySimpleQueryParser.Tests
         }
 
         [TestMethod]
-        public void Invalid_InList_Condition_Should_Return_Failed_Parse_Result()
+        public void InList_Without_Brackets_Condition_Should_Still_Return_Success_Parse_Result()
         {
             var result = _parser.Parse(" select uvw, rst,opq  from xYz where uvw in 1,2");
-            Assert.IsFalse(result.IsSuccess);
-            Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_WHERE_INCORRECT_FORMAT_IN_LIST));
+            Assert.IsTrue(result.IsSuccess);
+
+            var filter = result.Query.Filters[0];
+            AssertFilter(filter, "uvw", FilterOperator.InList, "1", "2");
         }
-        
+
         [TestMethod]
         public void Valid_Between_Condition_Should_Return_Success_Parse_Result()
         {
@@ -284,7 +288,7 @@ namespace MySimpleQueryParser.Tests
             Assert.IsTrue(result.IsSuccess);
 
             var filter = result.Query.Filters[0];
-            AssertFilter(filter, "uvw", FilterOperator.Equal, "123", "456");
+            AssertFilter(filter, "uvw", FilterOperator.Between, "123", "456");
         }
 
         [TestMethod]
@@ -298,7 +302,7 @@ namespace MySimpleQueryParser.Tests
         [TestMethod]
         public void One_Empty_Between_Condition_Should_Return_Failed_Parse_Result()
         {
-            var result = _parser.Parse(" select uvw, rst,opq  from xYz where uvw in (1,)");
+            var result = _parser.Parse(" select uvw, rst,opq  from xYz where uvw between (1,)");
             Assert.IsFalse(result.IsSuccess);
             Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_WHERE_BETWEEN_FORMAT));
         }
@@ -315,10 +319,10 @@ namespace MySimpleQueryParser.Tests
             AssertFilter(filter, "uvw", FilterOperator.InList, "123", "456");
 
             var filter2 = result.Query.Filters[1];
-            AssertFilter(filter, "opq", FilterOperator.Equal, "789");
+            AssertFilter(filter2, "opq", FilterOperator.Equal, "789");
 
             var filter3 = result.Query.Filters[2];
-            AssertFilter(filter, "rst", FilterOperator.Between, "01-Jan-2015", "05-Feb-2015");
+            AssertFilter(filter3, "rst", FilterOperator.Between, "01-Jan-2015", "05-Feb-2015");
         }
 
         [TestMethod]
@@ -326,7 +330,7 @@ namespace MySimpleQueryParser.Tests
         {
             var result = _parser.Parse(" select uvw, rst,opq  from xYz where rst = 2015");
             Assert.IsFalse(result.IsSuccess);
-            Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_WHERE_INVALID_DATE_VALUE));
+            Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_WHERE_INVALID_DATA_TYPE));
         }
 
         [TestMethod]
@@ -334,7 +338,7 @@ namespace MySimpleQueryParser.Tests
         {
             var result = _parser.Parse(" select uvw, rst,opq  from xYz where opq = 12a");
             Assert.IsFalse(result.IsSuccess);
-            Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_WHERE_INVALID_NUMERIC_VALUE));
+            Assert.IsTrue(result.Message.StartsWith(Parser.FAILED_PARSE_INVALID_WHERE_INVALID_DATA_TYPE));
         }
 
         [TestMethod]

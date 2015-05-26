@@ -26,8 +26,7 @@ namespace MySimpleQueryParser
         public const string FAILED_PARSE_INVALID_WHERE_EMPTY_IN_LIST = "Invalid empty in list filter was found";
         public const string FAILED_PARSE_INVALID_WHERE_INCORRECT_FORMAT_IN_LIST = "Invalid in list filter format was found";
         public const string FAILED_PARSE_INVALID_WHERE_BETWEEN_FORMAT = "Invalid between filter was found, it must have 2 values in comma separated values and put in parentheses";
-        public const string FAILED_PARSE_INVALID_WHERE_INVALID_DATE_VALUE = "Invalid filter date value was found for date type filter field";
-        public const string FAILED_PARSE_INVALID_WHERE_INVALID_NUMERIC_VALUE = "Invalid filter numeric value was found for numeric type filter field";
+        public const string FAILED_PARSE_INVALID_WHERE_INVALID_DATA_TYPE = "Invalid filter value was found for date (dd-MMM-yyyy) or numeric filter field(s)";
 
         protected IDictionary<string, EntityDefinition> _entities;
         public Parser(IList<EntityDefinition> entities)
@@ -114,8 +113,8 @@ namespace MySimpleQueryParser
                 , Type
                 , string.Join(",", Fields.Select(x => x.ToString()).ToArray())
                 , EntityName
-                ); 
-            
+                );
+
             if (Filters != null && Filters.Count > 0)
             {
                 sb.AppendFormat(" WHERE {1}", string.Join(",", Filters.Select(x => x.ToString()).ToArray()));
@@ -179,6 +178,14 @@ namespace MySimpleQueryParser
         public Field Field { get; set; }
         public FilterOperator Operator { get; set; }
         public IList<string> FilterValues { get; set; }
+
+        public override string ToString()
+        {
+            return string.Format("{0} {1} {2}"
+                , Field != null ? Field.Name : string.Empty
+                , Operator
+                , FilterValues != null ? FilterValues.Count.ToString() : "(null/empty)");
+        }
     }
 
     public enum FilterOperator

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -10,7 +11,7 @@ namespace MySimpleQueryParser
     public class RegexParser : Parser
     {
         const string QueryPattern = @"^\s*(?<t>\w+)\s+(?<f>.+)\s+from\s+(?<e>\w+)\s*(?<w>where\s*(?<c>.+)*)*";
-        const string ConditionPattern = @"\s*(?<f>\w+)\s+(?<o>.+)\s+(?<v>\w+)\s*";
+        const string ConditionPattern = @"\s*(?<f>\w+?)\s+(?<o>.+?)\s+?(?<v>.+)\s*?";
 
         public RegexParser(IList<EntityDefinition> entities)
             : base(entities)
@@ -95,7 +96,7 @@ namespace MySimpleQueryParser
                         {
                             var conditionField = matchCondition.Groups["f"].Value.Trim();
                             var conditionOperator = matchCondition.Groups["o"].Value.ToUpperInvariant();
-                            var conditionValue = matchCondition.Groups["v"].Value.Trim();
+                            var conditionValue = matchCondition.Groups["v"].Value.Trim('(', ')', ' ', '[', ']');
 
                             var filter = new QueryFilter();
 
@@ -115,39 +116,31 @@ namespace MySimpleQueryParser
 
                                 case "IN":
                                     filter.Operator = FilterOperator.InList;
+                                    filter.FilterValues = conditionValue.Split(',').Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToList();
 
-                                    if (conditionValue.StartsWith("(") && conditionValue.EndsWith(")"))
+                                    if (filter.FilterValues == null || filter.FilterValues.Count == 0)
                                     {
-                                        filter.FilterValues = conditionValue.Split(',').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+                                        return new ParseResult(FAILED_PARSE_INVALID_WHERE_EMPTY_IN_LIST);
                                     }
-                                    else
-                                    {
-                                        return new ParseResult(FAILED_PARSE_INVALID_WHERE_INCORRECT_FORMAT_IN_LIST);
-                                    }
+                                    //else
+                                    //{
+                                    //    return new ParseResult(FAILED_PARSE_INVALID_WHERE_INCORRECT_FORMAT_IN_LIST);
+                                    //}
                                     break;
 
                                 case "BETWEEN":
                                     filter.Operator = FilterOperator.Between;
-
-                                    if (conditionValue.StartsWith("(") && conditionValue.EndsWith(")"))
-                                    {
-                                        filter.FilterValues = conditionValue.Split(',').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-                                        if (filter.FilterValues.Count != 2)
-                                        {
-                                            return new ParseResult(FAILED_PARSE_INVALID_WHERE_BETWEEN_FORMAT);
-                                        }
-                                    }
-                                    else
+                                    filter.FilterValues = conditionValue.Split(',').Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToList();
+                                    if (filter.FilterValues == null || filter.FilterValues.Count != 2)
                                     {
                                         return new ParseResult(FAILED_PARSE_INVALID_WHERE_BETWEEN_FORMAT);
                                     }
+
                                     break;
 
                                 default:
                                     return new ParseResult(FAILED_PARSE_INVALID_WHERE_INVALID_OPERATOR + ":" + conditionOperator);
                             }
-
-                            // validate filter data type
 
                             query.Filters.Add(filter);
                         }
@@ -155,6 +148,46 @@ namespace MySimpleQueryParser
                         {
                             return new ParseResult(FAILED_PARSE_INVALID_WHERE_INCORRECT_FORMAT);
                         }
+
+                    }
+
+                    // validate filter data type
+                    var invalidFilterValues = new List<String>();
+                    foreach (var f in query.Filters)
+                    {
+                        var lv = new List<String>();
+                        switch (f.Field.FieldType)
+                        {
+                            case FieldType.DateType:
+                                foreach (var v in f.FilterValues)
+                                {
+                                    DateTime result;
+                                    if (!DateTime.TryParseExact(v, "dd-MMM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out result))
+                                    {
+                                        lv.Add(v);
+                                    }
+                                }
+                                break;
+                            case FieldType.NumberType:
+                                foreach (var v in f.FilterValues)
+                                {
+                                    Decimal result;
+                                    if (!Decimal.TryParse(v, NumberStyles.Any, CultureInfo.InvariantCulture, out result))
+                                    {
+                                        lv.Add(v);
+                                    }
+                                }
+                                break;
+                        }
+                        if (lv.Count > 0)
+                        {
+                            invalidFilterValues.Add(string.Format("{0}({1}): {2}", f.Field.Name, f.Field.FieldType, string.Join(",", lv.ToArray())));
+                        }
+                    }
+
+                    if (invalidFilterValues.Count > 0)
+                    {
+                        return new ParseResult(Parser.FAILED_PARSE_INVALID_WHERE_INVALID_DATA_TYPE + ", Details:" + string.Join(";", invalidFilterValues.ToArray()));
                     }
                 }
                 #endregion
